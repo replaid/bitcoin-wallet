@@ -1,7 +1,43 @@
 GEM
   remote: https://rubygems.org/
   specs:
+    base32 (0.3.4)
+    base64 (0.2.0)
+    bech32 (1.5.0)
+      thor (>= 1.1.0)
+    bip-schnorr (0.7.0)
+      ecdsa_ext (~> 0.5.0)
+    bitcoinrb (1.8.2)
+      base32 (>= 0.3.4)
+      base64 (~> 0.2.0)
+      bech32 (>= 1.5.0)
+      bip-schnorr (>= 0.7.0)
+      daemon-spawn
+      ecdsa_ext (~> 0.5.1)
+      eventmachine
+      eventmachine_httpserver
+      iniparse
+      leb128 (~> 1.0.0)
+      logger
+      murmurhash3 (~> 0.1.7)
+      observer (~> 0.1.2)
+      secp256k1rb (= 0.1.1)
+      siphash
+      thor
+    daemon-spawn (0.4.2)
     diff-lcs (1.6.2)
+    ecdsa (1.2.0)
+    ecdsa_ext (0.5.1)
+      ecdsa (~> 1.2.0)
+    eventmachine (1.2.7)
+    eventmachine_httpserver (0.2.1)
+    ffi (1.17.2)
+    ffi (1.17.2-x86_64-darwin)
+    iniparse (1.5.0)
+    leb128 (1.0.0)
+    logger (1.7.0)
+    murmurhash3 (0.1.7)
+    observer (0.1.2)
     rspec (3.13.1)
       rspec-core (~> 3.13.0)
       rspec-expectations (~> 3.13.0)
@@ -15,12 +51,17 @@ GEM
       diff-lcs (>= 1.2.0, < 2.0)
       rspec-support (~> 3.13.0)
     rspec-support (3.13.4)
+    secp256k1rb (0.1.1)
+      ffi (>= 1.16.3)
+    siphash (0.0.1)
+    thor (1.3.2)
 
 PLATFORMS
   ruby
   x86_64-darwin-22
 
 DEPENDENCIES
+  bitcoinrb (~> 1.8.2)
   rspec (~> 3.13)
 
 BUNDLED WITH

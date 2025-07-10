@@ -12,9 +12,15 @@ class Wallet
 
     FileUtils.touch(filename)
     FileUtils.chmod(0600, filename)
+    key = Bitcoin::Key.generate
+    File.write(filename, key.to_wif)
   rescue Errno::EACCES => e
     raise "Permission denied: #{e.message}"
   rescue Errno::ENOENT => e
     raise "Directory doesn't exist: #{e.message}"
+  end
+
+  def self.load_key
+    Bitcoin::Key.from_wif(File.read(KEY_FILENAME))
   end
 end
