@@ -13,8 +13,8 @@ describe Wallet do
 
     it 'has user-only permissions' do
       inside_tmpdir do |dir|
-        Wallet.new.ensure_key_file(dir)
-        filename = File.join(dir, 'wallet.key')
+        Wallet.new.ensure_key_file
+        filename = 'wallet.key'
         expect(File.exist?(filename)).to be true
 
         file_stat = File.stat(filename)
@@ -25,14 +25,14 @@ describe Wallet do
 
     it 'does not overwrite existing key file' do
       inside_tmpdir do |dir|
-        filename = File.join(dir, 'wallet.key')
+        filename = 'wallet.key'
         FileUtils.touch(filename)
         FileUtils.chmod(0600, filename)
         File.write(filename, 'existing')
         expect(File.exist?(filename)).to be true
 
         original_content = File.read(filename)
-        Wallet.new.ensure_key_file(dir)
+        Wallet.new.ensure_key_file
         expect(File.read(filename)).to eq(original_content)
       end
     end
