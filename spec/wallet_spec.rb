@@ -3,8 +3,16 @@ require 'tmpdir'
 
 describe Wallet do
   describe 'creating the key' do
-    it 'has user-only permissions' do
+    def inside_tmpdir
       Dir.mktmpdir do |dir|
+        Dir.chdir(dir) do
+          yield dir
+        end
+      end
+    end
+
+    it 'has user-only permissions' do
+      inside_tmpdir do |dir|
         Wallet.new.ensure_key_file(dir)
         filename = File.join(dir, 'wallet.key')
         expect(File.exist?(filename)).to be true
@@ -16,7 +24,7 @@ describe Wallet do
     end
 
     it 'does not overwrite existing key file' do
-      Dir.mktmpdir do |dir|
+      inside_tmpdir do |dir|
         filename = File.join(dir, 'wallet.key')
         FileUtils.touch(filename)
         FileUtils.chmod(0600, filename)
@@ -30,7 +38,7 @@ describe Wallet do
     end
 
     it 'creates the directory if missing' do
-      Dir.mktmpdir do |dir|
+      inside_tmpdir do |dir|
         new_dir = File.join(dir, 'new_directory')
         Wallet.new.ensure_key_file(new_dir)
         expect(Dir.exist?(new_dir)).to be true
