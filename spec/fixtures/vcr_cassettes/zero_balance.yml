@@ -1,0 +1,57 @@
+---
+http_interactions:
+- request:
+    method: get
+    uri: https://mempool.space/signet/api/address/mu8VyQWff8fPzeG466C1fjBmA7kqnhzFL2
+    body:
+      encoding: US-ASCII
+      string: ''
+    headers:
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+      User-Agent:
+      - Ruby
+      Host:
+      - mempool.space
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Server:
+      - nginx
+      Date:
+      - Fri, 11 Jul 2025 14:12:09 GMT
+      Content-Type:
+      - application/json
+      Content-Length:
+      - '264'
+      Connection:
+      - keep-alive
+      Cache-Control:
+      - no-cache
+      - public
+      X-Powered-By:
+      - mempool-electrs 3.2.0-dev-6cb9bec
+      Access-Control-Allow-Origin:
+      - "*"
+      Expires:
+      - Fri, 11 Jul 2025 14:12:08 GMT
+      Onion-Location:
+      - http://mempoolhqx4isw62xs7abwphsq7ldayuidyx2v2oethdhhj6mlo2r6ad.onion/signet/api/address/mu8VyQWff8fPzeG466C1fjBmA7kqnhzFL2
+      Strict-Transport-Security:
+      - max-age=63072000; includeSubDomains; preload
+      Content-Security-Policy:
+      - frame-ancestors 'self'
+      Pragma:
+      - public
+      Vary:
+      - Accept-Language
+      - Cookie
+    body:
+      encoding: UTF-8
+      string: '{"address":"mu8VyQWff8fPzeG466C1fjBmA7kqnhzFL2","chain_stats":{"funded_txo_count":0,"funded_txo_sum":0,"spent_txo_count":0,"spent_txo_sum":0,"tx_count":0},"mempool_stats":{"funded_txo_count":0,"funded_txo_sum":0,"spent_txo_count":0,"spent_txo_sum":0,"tx_count":0}}'
+  recorded_at: Fri, 11 Jul 2025 14:12:08 GMT
+recorded_with: VCR 6.3.1

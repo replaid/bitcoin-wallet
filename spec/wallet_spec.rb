@@ -1,6 +1,13 @@
 require 'wallet'
 require 'tmpdir'
 require 'bitcoin'
+Bitcoin.chain_params = :signet
+require 'vcr'
+
+VCR.configure do |config|
+  config.cassette_library_dir = 'spec/fixtures/vcr_cassettes'
+  config.hook_into :webmock
+end
 
 describe Wallet do
   def inside_tmpdir
@@ -70,6 +77,26 @@ describe Wallet do
         File.write(filename, existing_key.to_wif)
         new_key = Wallet.load_key
         expect(new_key).to be_a(Bitcoin::Key)
+      end
+    end
+  end
+
+  describe 'fetches the balance of funds' do
+    context 'with a newly-generated key' do
+      let(:wif) { 'cVctnY8ai1XxfKahKoBU8oUSNHCSDAmWcSwMDHYEWWrH7Ft6yXt6' }
+      let(:key) { Bitcoin::Key.from_wif(wif) }
+      let(:wallet) {
+        filename = 'wallet.key'
+        FileUtils.touch(filename)
+        FileUtils.chmod(0600, filename)
+        File.write(filename, wif)
+        Wallet.new
+      }
+
+      it 'has a zero balance' do
+        VCR.use_cassette('zero_balance') do
+          expect(wallet.fetch_balance).to eq(Money.new(0, 'BTC'))
+        end
       end
     end
   end
