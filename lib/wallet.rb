@@ -1,4 +1,5 @@
 require 'fileutils'
+require 'bitcoin'
 
 class Wallet
   KEY_FILENAME = 'wallet.key'
