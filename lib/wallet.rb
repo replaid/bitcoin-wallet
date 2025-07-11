@@ -6,7 +6,7 @@ class Wallet
 
   def ensure_key_file(directory = Dir.pwd)
     # Ensure the directory exists before proceeding
-    Dir.mkdir(directory) unless Dir.exist?(directory)
+    FileUtils.mkdir_p(directory) unless Dir.exist?(directory)
 
     filename = File.join(directory, KEY_FILENAME)
     return if File.exist?(filename)  # Don't overwrite existing file

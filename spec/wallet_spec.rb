@@ -40,7 +40,7 @@ describe Wallet do
 
     it 'creates the directory if missing' do
       inside_tmpdir do |dir|
-        new_dir = File.join(dir, 'new_directory')
+        new_dir = File.join(dir, 'new_parent_dir/new_directory')
         Wallet.new.ensure_key_file(new_dir)
         expect(Dir.exist?(new_dir)).to be true
         filename = File.join(new_dir, 'wallet.key')
