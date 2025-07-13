@@ -1,4 +1,5 @@
 require 'securerandom'
+require 'tmpdir'
 
 describe WIFFile do
   def inside_tmpdir
@@ -10,7 +11,7 @@ describe WIFFile do
   end
 
   let(:sample_wif) { 'cVctnY8ai1XxfKahKoBU8oUSNHCSDAmWcSwMDHYEWWrH7Ft6yXt6' }
-  let(:sample_key) { Bitcoin::Key.from_wif(sample_wif) }
+  let(:sample_key) { instance_double(Bitcoin::Key, to_wif: sample_wif) }
 
   describe '#directory' do
     it 'is current working directory by default' do
@@ -86,16 +87,29 @@ describe WIFFile do
     it 'writes to the file with the result of the block' do
       my_key = sample_key
       file_contents = nil
+      wif_file = nil
       inside_tmpdir do |dir|
-        WIFFile.new.ensure_exists! do
+        wif_file = WIFFile.new
+        wif_file.ensure_exists! do
           my_key
         end
-        file_contents = Wallet.new.load_key
+        file_contents = File.read(wif_file.filename)
       end
-      # Unfortunately #== is currently not implemented on Bitcoin::Key
-      expect(file_contents.priv_key).to eq(my_key.priv_key)
-      expect(file_contents.pubkey).to eq(my_key.pubkey)
-      expect(file_contents.key_type).to eq(my_key.key_type)
+      expect(file_contents).to eq(sample_wif)
     end
   end
+
+  describe '#to_key' do
+    it 'returns a key' do
+      inside_tmpdir do |dir|
+        wif_file = WIFFile.new
+        wif_file.ensure_exists! do
+          sample_key
+        end
+        new_key = WIFFile.new.to_key
+        expect(new_key).to be_a(Bitcoin::Key)
+      end
+    end
+  end
+
 end

@@ -6,11 +6,14 @@ class WIFFile
     @filename = filename
   end
 
+  def path
+    File.join(directory, filename)
+  end
+
   def ensure_exists!
     # Ensure the directory exists before proceeding
     FileUtils.mkdir_p(directory) unless Dir.exist?(directory)
 
-    path = File.join(directory, filename)
     return if File.exist?(path)  # Don't overwrite existing file
 
     FileUtils.touch(path)
@@ -21,5 +24,9 @@ class WIFFile
     raise "Permission denied: #{e.message}"
   rescue Errno::ENOENT => e
     raise "Directory doesn't exist: #{e.message}"
+  end
+
+  def to_key
+    Bitcoin::Key.from_wif(File.read(path))
   end
 end

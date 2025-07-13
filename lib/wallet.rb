@@ -20,7 +20,7 @@ class Wallet
   end
 
   def load_key
-    Bitcoin::Key.from_wif(File.read(wif_file.filename))
+    wif_file.to_key
   end
 
   def fetch_balance
