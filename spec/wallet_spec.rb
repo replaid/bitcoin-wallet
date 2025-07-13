@@ -10,6 +10,11 @@ VCR.configure do |config|
 end
 
 describe Wallet do
+  let(:sample_wif) { 'cVctnY8ai1XxfKahKoBU8oUSNHCSDAmWcSwMDHYEWWrH7Ft6yXt6' }
+  let(:sample_key) { Bitcoin::Key.from_wif(sample_wif) }
+
+  it 'has no need for inside_tmpdir and possible other file related warts'
+
   def inside_tmpdir
     Dir.mktmpdir do |dir|
       Dir.chdir(dir) do
@@ -18,64 +23,31 @@ describe Wallet do
     end
   end
 
-  describe 'creating the key' do
-    it 'has user-only permissions' do
-      inside_tmpdir do |dir|
-        Wallet.new.ensure_key_file
-        filename = 'wallet.key'
-        expect(File.exist?(filename)).to be true
+  describe '#ensure_key_file' do
+    let(:wif_file) { instance_double(WIFFile) }
+    let(:wallet) { Wallet.new(wif_file: wif_file) }
+    let(:stub_key) { instance_double(Bitcoin::Key) }
 
-        file_stat = File.stat(filename)
-        permission_bits = file_stat.mode & 0777
-        expect(permission_bits).to eq(0600)
-      end
+    before do
+      expect(Bitcoin::Key).to receive(:generate).and_return(stub_key)
     end
 
-    it 'does not overwrite existing key file' do
-      inside_tmpdir do |dir|
-        filename = 'wallet.key'
-        FileUtils.touch(filename)
-        FileUtils.chmod(0600, filename)
-        File.write(filename, 'existing')
-        expect(File.exist?(filename)).to be true
-
-        original_content = File.read(filename)
-        Wallet.new.ensure_key_file
-        expect(File.read(filename)).to eq(original_content)
+    it 'generates a Bitcoin::Key for WIFFile#ensure_exists!' do
+      expect(wif_file).to receive(:ensure_exists!) do |&block|
+        expect(block.call).to be(stub_key)
       end
-    end
-
-    it 'creates the directory if missing' do
-      inside_tmpdir do |dir|
-        new_dir = File.join(dir, 'new_parent_dir/new_directory')
-        Wallet.new.ensure_key_file(directory: new_dir)
-        expect(Dir.exist?(new_dir)).to be true
-        filename = File.join(new_dir, 'wallet.key')
-        expect(File.exist?(filename)).to be true
-      end
-    end
-
-    it 'creates a key with default properties' do
-      key = nil
-      inside_tmpdir do |dir|
-        Wallet.new.ensure_key_file
-        key = Wallet.load_key
-      end
-      expect(key.priv_key.size).to eq(64)
-      expect(key.pubkey.size).to eq(66)
-      expect(key.compressed?).to be true
+      wallet.ensure_key_file
     end
   end
 
   describe 'loading the key' do
     it 'returns a key' do
       inside_tmpdir do |dir|
-        existing_key = Bitcoin::Key.generate
         filename = File.join(dir, 'wallet.key')
         FileUtils.touch(filename)
         FileUtils.chmod(0600, filename)
-        File.write(filename, existing_key.to_wif)
-        new_key = Wallet.load_key
+        File.write(filename, sample_wif)
+        new_key = Wallet.new.load_key
         expect(new_key).to be_a(Bitcoin::Key)
       end
     end
@@ -83,13 +55,11 @@ describe Wallet do
 
   describe 'fetches the balance of funds' do
     context 'with a newly-generated key' do
-      let(:wif) { 'cVctnY8ai1XxfKahKoBU8oUSNHCSDAmWcSwMDHYEWWrH7Ft6yXt6' }
-      let(:key) { Bitcoin::Key.from_wif(wif) }
       let(:wallet) {
         filename = 'wallet.key'
         FileUtils.touch(filename)
         FileUtils.chmod(0600, filename)
-        File.write(filename, wif)
+        File.write(filename, sample_wif)
         Wallet.new
       }
 

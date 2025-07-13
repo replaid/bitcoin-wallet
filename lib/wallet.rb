@@ -7,22 +7,24 @@ require 'net/http'
 require 'wif_file'
 
 class Wallet
-  KEY_FILENAME = 'wallet.key'
+  attr_reader :wif_file
 
-  def ensure_key_file(directory: Dir.pwd)
-    file = WIFFile.new(directory: directory)
-    file.ensure_exists! do
+  def initialize(wif_file: WIFFile.new)
+    @wif_file = wif_file
+  end
+
+  def ensure_key_file
+    wif_file.ensure_exists! do
       Bitcoin::Key.generate
     end
   end
 
-  def self.load_key
-    Bitcoin::Key.from_wif(File.read(KEY_FILENAME))
+  def load_key
+    Bitcoin::Key.from_wif(File.read(wif_file.filename))
   end
 
   def fetch_balance
-    key = self.class.load_key
-    address = key.to_addr
+    address = load_key.to_addr
     uri = URI("https://mempool.space/signet/api/address/#{address}")
     satoshi_balance = JSON.parse(Net::HTTP.get(uri))["chain_stats"]["funded_txo_sum"]
     Money.new(satoshi_balance, 'BTC')
