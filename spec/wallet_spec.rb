@@ -54,4 +54,57 @@ describe Wallet do
       end
     end
   end
+
+  describe '#build_transaction' do
+    let(:utxos) do
+      [{"txid" => "abc123", "vout" => 0, "value" => 100_000}]
+    end
+    let(:recipient_address) { 'mzGAKzEfQ4qr31pn9byp71rTfQzyAEBVz3' }
+
+    it "includes all UTXOs as inputs" do
+      VCR.use_cassette('recommended_fee_rate') do
+        tx = wallet.build_transaction(utxos, recipient_address, Money.new(50_000, 'BTC'))
+        expect(tx.inputs.size).to eq(1)
+        expect(tx.inputs.first.out_point.txid).to eq("abc123")
+      end
+    end
+
+    it "calculates change correctly" do
+      expected_fee = nil
+      VCR.use_cassette('recommended_fee_rate') do
+        expected_fee = wallet.miner_fee(input_count: utxos.size, output_count: 2)
+      end
+      VCR.use_cassette('recommended_fee_rate') do
+        amount_to_send = Money.new(50_000, 'BTC')
+        tx = wallet.build_transaction(utxos, recipient_address, amount_to_send)
+        expect(tx.outputs.last.value).to eq(Money.new(100_000, 'BTC') - amount_to_send - expected_fee)
+      end
+    end
+
+    it "raises an error if amount_to_send is not a Money object" do
+      expect { wallet.build_transaction(utxos, recipient_address, 50_000) }.to raise_error(Dry::Types::ConstraintError)
+    end
+  end
+
+  describe '#estimate_tx_vbytes' do
+    it 'assumes 68 vbytes for SegWit inputs, 31 for outputs' do
+      expect(wallet.estimate_tx_vbytes(input_count: 1, output_count: 2)).to eq(140)
+    end
+  end
+
+  describe '#fetch_recommended_fee_rate' do
+    it 'returns a Money amount' do
+      VCR.use_cassette('recommended_fee_rate') do
+        expect(wallet.fetch_recommended_fee_rate).to eq(Money.new(1, 'BTC'))
+      end
+    end
+  end
+
+  describe '#miner_fee' do
+    it 'calculates correctly' do
+      VCR.use_cassette('recommended_fee_rate') do
+        expect(wallet.miner_fee(input_count: 4, output_count: 2)).to eq(Money.new(344, 'BTC'))
+      end
+    end
+  end
 end

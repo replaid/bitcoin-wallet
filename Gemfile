@@ -10,3 +10,5 @@ gem "money", "~> 6.19"
 gem "vcr", "~> 6.3"
 
 gem "webmock", "~> 3.25"
+
+gem "dry-types", "~> 1.8"

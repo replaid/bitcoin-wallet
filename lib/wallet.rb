@@ -4,6 +4,7 @@ require 'money'
 Money.rounding_mode = BigDecimal::ROUND_HALF_UP
 require 'net/http'
 require 'wif_file'
+require 'types'
 
 class Wallet
   attr_reader :wif_file
@@ -27,5 +28,41 @@ class Wallet
     uri = URI("https://mempool.space/signet/api/address/#{address}")
     satoshi_balance = JSON.parse(Net::HTTP.get(uri))["chain_stats"]["funded_txo_sum"]
     Money.new(satoshi_balance, 'BTC')
+  end
+
+  def build_transaction(utxos, recipient_address, amount_to_send)
+    money_amount_to_send = Types::BTCMoney[amount_to_send]
+
+    tx = Bitcoin::Tx.new
+
+    # add inputs
+    utxos.each do |utxo|
+      tx.in << Bitcoin::TxIn.new(
+        out_point: Bitcoin::OutPoint.from_txid(utxo['txid'], utxo['vout'])
+      )
+    end
+
+    # add outputs
+    fee = miner_fee(input_count: utxos.size, output_count: 2)
+    change_amount = utxos.sum { |utxo| Money.new(utxo['value'], 'BTC') } - money_amount_to_send - fee
+    tx.out << Bitcoin::TxOut.new(value: money_amount_to_send, script_pubkey: Bitcoin::Script.parse_from_addr(recipient_address))
+    tx.out << Bitcoin::TxOut.new(value: change_amount, script_pubkey: Bitcoin::Script.parse_from_addr(load_key.to_addr))
+    tx
+  end
+
+  def estimate_tx_vbytes(input_count:, output_count:)
+    base_tx_size = 10
+    base_tx_size + (input_count * 68) + (output_count * 31)
+  end
+
+  def fetch_recommended_fee_rate
+    uri = URI("https://mempool.space/signet/api/v1/fees/recommended")
+    raw_response = Net::HTTP.get(uri)
+    response_data = JSON.parse(raw_response)
+    Money.new(response_data["hourFee"], "BTC")
+  end
+
+  def miner_fee(input_count:, output_count:)
+    fetch_recommended_fee_rate * estimate_tx_vbytes(input_count:, output_count:)
   end
 end
