@@ -1,4 +1,3 @@
-require 'fileutils'
 require 'bitcoin'
 Bitcoin.chain_params = :signet
 require 'money'

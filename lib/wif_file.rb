@@ -1,3 +1,5 @@
+require 'fileutils'
+
 class WIFFile
   attr_reader :directory, :filename
 

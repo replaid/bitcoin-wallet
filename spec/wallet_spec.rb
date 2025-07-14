@@ -14,8 +14,6 @@ describe Wallet do
   let(:wif_file) { instance_double(WIFFile, to_key: sample_key) }
   let(:wallet) { Wallet.new(wif_file: wif_file) }
 
-  it 'has no need for inside_tmpdir and possible other file related warts'
-
   describe '#ensure_key_file' do
     before do
       expect(Bitcoin::Key).to receive(:generate).and_return(sample_key)
@@ -41,6 +39,17 @@ describe Wallet do
       it 'has a zero balance' do
         VCR.use_cassette('zero_balance') do
           expect(wallet.fetch_balance).to eq(Money.new(0, 'BTC'))
+        end
+      end
+    end
+
+    context 'with a funded key' do
+      let(:funded_key) { instance_double(Bitcoin::Key, to_addr: 'mxT8fcbjy53gCm1us3igBZ9fSvA52uQSNf') }
+      let(:sample_key) { funded_key }
+
+      it 'has the funded balance' do
+        VCR.use_cassette('funded_balance') do
+          expect(wallet.fetch_balance).to eq(Money.new(331388, 'BTC'))
         end
       end
     end
