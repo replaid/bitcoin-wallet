@@ -115,7 +115,42 @@ class Wallet
     fetch_recommended_fee_rate * estimate_tx_vbytes(input_count:, output_count:)
   end
 
+  def broadcast_transaction(signed_tx)
+    uri = URI("https://mempool.space/signet/api/tx")
+    response = begin
+                 Net::HTTP.post(uri, signed_tx.to_hex)
+               rescue Timeout::Error, SocketError => e
+                 raise SigningError, "Network error: #{e.message}"
+               end
+
+    case response
+    when Net::HTTPSuccess
+      JSON.parse(response.body)["txid"]
+    else
+      handle_broadcast_error(response)
+    end
+  end
+
   private
+
+  def handle_broadcast_error(response)
+    error_message = begin
+                      JSON.parse(response.body)["message"]
+                    rescue JSON::ParserError
+                      response.body
+                    end
+
+    case response.code.to_i
+    when 400
+      raise SigningError, "Invalid transaction: #{error_message}"
+    when 403
+      raise SigningError, "Transaction rejected: #{error_message}"
+    when 429
+      raise SigningError, "Rate limited: #{error_message}"
+    else
+      raise SigningError, "Broadcast failed (#{response.code}): #{error_message}"
+    end
+  end
 
   def find_utxo_for_input(input)
     txid = input.out_point.txid

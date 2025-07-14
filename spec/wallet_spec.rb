@@ -1,5 +1,8 @@
 require 'wallet'
 require 'bitcoin'
+
+include Bitcoin::Opcodes
+
 Bitcoin.chain_params = :signet
 
 describe Wallet do
@@ -223,6 +226,74 @@ describe Wallet do
     it 'calculates correctly' do
       VCR.use_cassette('recommended_fee_rate') do
         expect(wallet.miner_fee(input_count: 4, output_count: 2)).to eq(Money.new(344, 'BTC'))
+      end
+    end
+  end
+
+  describe '#broadcast_transaction' do
+    let(:sample_tx) do
+      tx = Bitcoin::Tx.new
+      tx.version = 1
+      tx.lock_time = 0
+
+      input = Bitcoin::TxIn.new
+      input.out_point = Bitcoin::OutPoint.new('00' * 32, 0xffffffff)
+      input.script_sig = Bitcoin::Script.new << OP_0 << OP_0
+      tx.inputs << input
+
+      output = Bitcoin::TxOut.new
+      output.value = 1000
+      output.script_pubkey = Bitcoin::Script.parse_from_addr(wallet.legacy_address)
+      tx.outputs << output
+
+      tx
+    end
+
+    context 'when broadcast is successful' do
+      it 'returns the transaction ID' do
+        stub_request(:post, "https://mempool.space/signet/api/tx")
+          .to_return(
+            status: 200,
+            body: { txid: sample_tx.txid }.to_json,
+            headers: { 'Content-Type' => 'application/json' }
+          )
+
+        expect(wallet.broadcast_transaction(sample_tx)).to eq(sample_tx.txid)
+      end
+    end
+
+    context 'when broadcast fails' do
+      it 'raises an error for invalid transactions' do
+        stub_request(:post, "https://mempool.space/signet/api/tx")
+          .to_return(
+            status: 400,
+            body: { message: "Transaction rejected: mandatory-script-verify-flag-failed" }.to_json
+          )
+
+        expect { wallet.broadcast_transaction(sample_tx) }
+          .to raise_error(SigningError, /Invalid transaction/)
+      end
+
+      it 'raises an error for rejected transactions' do
+        stub_request(:post, "https://mempool.space/signet/api/tx")
+          .to_return(
+            status: 403,
+            body: { message: "Transaction already in blockchain" }.to_json
+          )
+
+        expect { wallet.broadcast_transaction(sample_tx) }
+          .to raise_error(SigningError, /Transaction rejected/)
+      end
+
+      it 'raises an error for rate limiting' do
+        stub_request(:post, "https://mempool.space/signet/api/tx")
+          .to_return(
+            status: 429,
+            body: { message: "Too many requests" }.to_json
+          )
+
+        expect { wallet.broadcast_transaction(sample_tx) }
+          .to raise_error(SigningError, /Rate limited/)
       end
     end
   end
