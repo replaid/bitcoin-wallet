@@ -60,10 +60,43 @@ class Wallet
     if change_amount < Money.new(0, 'BTC')
       raise InsufficientFundsError, "Sending #{money_amount_to_send.format} with fee #{fee.format} exceeds available amount #{current_balance.format}"
     end
-    tx.out << Bitcoin::TxOut.new(value: money_amount_to_send, script_pubkey: Bitcoin::Script.parse_from_addr(recipient_address))
-    tx.out << Bitcoin::TxOut.new(value: change_amount, script_pubkey: Bitcoin::Script.parse_from_addr(legacy_address))
+    tx.out << Bitcoin::TxOut.new(value: money_amount_to_send.fractional, script_pubkey: Bitcoin::Script.parse_from_addr(recipient_address))
+    tx.out << Bitcoin::TxOut.new(value: change_amount.fractional, script_pubkey: Bitcoin::Script.parse_from_addr(legacy_address))
 
     tx
+  end
+
+  def sign_transaction(tx)
+    key = load_key.bitcoin_key
+
+    tx.inputs.each_with_index do |input, index|
+      utxo = find_utxo_for_input(input)
+
+      unless owns_utxo?(utxo)
+        raise SigningError, "Cannot sign foreign UTXO #{utxo['txid']}:#{utxo['vout']}"
+      end
+
+      script_pubkey = Bitcoin::Script.parse_from_payload(utxo['scriptPubKey'].htb)
+
+      if script_pubkey.p2pkh?
+        # Legacy P2PKH signing - create minimal scriptSig
+        sighash = tx.sighash_for_input(index, script_pubkey, sig_version: :base)
+        signature = key.sign(sighash) + [Bitcoin::SIGHASH_TYPE[:all]].pack("C")
+        input.script_sig = Bitcoin::Script.new << signature << key.pubkey
+      elsif script_pubkey.p2wpkh?
+        # SegWit signing
+        sighash = tx.sighash_for_input(index, script_pubkey, sig_version: :witness_v0)
+        signature = key.sign(sighash) + [Bitcoin::SIGHASH_TYPE[:all]].pack("C")
+        input.script_witness = Bitcoin::ScriptWitness.new([signature, key.pubkey.htb])
+      end
+    end
+
+    tx
+  end
+
+  def mempool_api_get(endpoint)
+    uri = URI("https://mempool.space/signet/api#{endpoint}")
+    JSON.parse(Net::HTTP.get(uri))
   end
 
   def estimate_tx_vbytes(input_count:, output_count:)
@@ -80,5 +113,37 @@ class Wallet
 
   def miner_fee(input_count:, output_count:)
     fetch_recommended_fee_rate * estimate_tx_vbytes(input_count:, output_count:)
+  end
+
+  private
+
+  def find_utxo_for_input(input)
+    txid = input.out_point.txid
+    vout = input.out_point.index
+
+    # First check if UTXO is unspent
+    spend_status = mempool_api_get("/tx/#{txid}/outspend/#{vout}")
+    raise SigningError, "UTXO already spent" if spend_status['spent']
+
+    # Get full transaction details
+    tx = mempool_api_get("/tx/#{txid}")
+    output = tx['vout'][vout]
+
+    {
+      'txid' => txid,
+      'vout' => vout,
+      'value' => output['value'],
+      'scriptPubKey' => output['scriptpubkey'] # Note lowercase field name
+    }
+  end
+
+  def owns_utxo?(utxo)
+    script = Bitcoin::Script.parse_from_payload(utxo['scriptPubKey'].htb)
+    key = load_key
+    our_addresses = [
+      key.legacy_address, # Legacy address (m/n...)
+      key.address         # SegWit address (tb1q...)
+    ]
+    our_addresses.include?(script.to_addr)
   end
 end

@@ -1,23 +1,30 @@
 require 'wallet'
 require 'bitcoin'
 Bitcoin.chain_params = :signet
-require 'vcr'
-
-VCR.configure do |config|
-  config.cassette_library_dir = 'spec/fixtures/vcr_cassettes'
-  config.hook_into :webmock
-end
 
 describe Wallet do
   let(:old_sample_wif) { 'cVctnY8ai1XxfKahKoBU8oUSNHCSDAmWcSwMDHYEWWrH7Ft6yXt6' }
   let(:old_sample_key) { instance_double(Bitcoin::Key, to_addr: 'mu8VyQWff8fPzeG466C1fjBmA7kqnhzFL2') }
-  let(:sample_segwit_key) {
+  let(:unfunded_key) {
     instance_double(
       SegWitKey,
       address: 'tb1qqdyfx8fg7mecnyz5q2v933myftadzejjznydvk6fjvu95j5dj40l2fe4pvu',
-      legacy_address: 'n45MssfR7W2QQhRbwWzkjnYhckX9Ut96bV'
+      legacy_address: 'n45MssfR7W2QQhRbwWzkjnYhckX9Ut96bV',
+      bitcoin_key: Bitcoin::Key.new(
+        priv_key: '9b0660db724abec0977cc4bdcd42069d28294e61e8991701fa8c0c22377467fb',
+        pubkey: '0348931d28f6f3899054029858c7644afad1665214c8d65b4993385a4a8d955ff5',
+        key_type: Bitcoin::Key::TYPES[:compressed]
+      )
     )
   }
+  let(:funded_key) {
+    instance_double(
+      SegWitKey,
+      legacy_address: 'mxT8fcbjy53gCm1us3igBZ9fSvA52uQSNf',
+      address: 'tb1qqfk8rkavnw8gdgqyyzgkuvy60aug8xgdqjundk5m7yy4wnm6jzpf5p2w340'
+    )
+  }
+  let(:sample_segwit_key) { unfunded_key }
   let(:wif_file) { instance_double(WIFFile, to_key: sample_segwit_key) }
   let(:wallet) { Wallet.new(wif_file: wif_file) }
 
@@ -51,14 +58,6 @@ describe Wallet do
     end
 
     context 'with a funded key' do
-      let(:funded_key) { instance_double(Bitcoin::Key, to_addr: 'mxT8fcbjy53gCm1us3igBZ9fSvA52uQSNf') }
-      let(:funded_key) {
-        instance_double(
-          SegWitKey,
-          legacy_address: 'mxT8fcbjy53gCm1us3igBZ9fSvA52uQSNf',
-          address: 'tb1qqfk8rkavnw8gdgqyyzgkuvy60aug8xgdqjundk5m7yy4wnm6jzpf5p2w340'
-        )
-      }
       let(:sample_segwit_key) { funded_key }
 
       it 'has the funded balance' do
@@ -93,7 +92,7 @@ describe Wallet do
         end
         VCR.use_cassette('recommended_fee_rate') do
           tx = wallet.build_transaction(utxos, recipient_address, amount_to_send)
-          expect(tx.outputs.last.value).to eq(Money.new(100_000, 'BTC') - amount_to_send - expected_fee)
+          expect(tx.outputs.last.value).to eq((Money.new(100_000, 'BTC') - amount_to_send - expected_fee).fractional)
         end
       end
 
@@ -125,28 +124,83 @@ describe Wallet do
       end
     end
 
-    xdescribe '#sign_transaction' do
+    describe '#sign_transaction' do
+      let(:sample_segwit_key) { funded_key }
+      before do
+        allow(sample_segwit_key).to receive(:bitcoin_key).and_return(
+          Bitcoin::Key.new(
+            priv_key: 'b1eb445c19a27c9dec30563d86cc777b288f3e1f32b797135dfebe3aa021a370',
+            pubkey: '026c71dbac9b8e86a00420916e309a7f7883990d04b936da9bf109574f7a90829a',
+            key_type: Bitcoin::Key::TYPES[:compressed]
+          )
+        )
+      end
       let(:unsigned_tx) do
         VCR.use_cassette('recommended_fee_rate') do
           wallet.build_transaction(utxos, recipient_address, amount_to_send)
         end
       end
 
-      it 'signs all inputs with the wallet key' do
-        signed_tx = wallet.sign_transaction(unsigned_tx)
-        expect(signed_tx.inputs.all? { |i| i.script_sig.valid? }).to be true
-      end
+      context 'with real funded UTXOs' do
+        it 'successfully signs transactions' do
+          # Get actual UTXOs from blockchain
+          utxos = nil
+          VCR.use_cassette('signet_utxos') do
+            uri = URI("https://mempool.space/signet/api/address/#{wallet.legacy_address}/utxo")
+            utxos = JSON.parse(Net::HTTP.get(uri))
+          end
 
-      it 'raises SigningError when attempting to sign non-wallet UTXOs' do
-        another_address = 'mhUMUSYrnQNu7gXhYXuVTCAahKc6ns16Lg'
-        foreign_utxo = build_foreign_utxo(address: another_address)
-        tx_with_foreign_input = nil
-        VCR.use_cassette('recommended_fee_rate') do
-          tx_with_foreign_input = wallet.build_transaction([foreign_utxo], recipient_address, amount_to_send)
+          # Enrich each UTXO with scriptPubKey
+          utxos.each do |utxo|
+            VCR.use_cassette("signet_tx_#{utxo['txid']}") do
+              tx_data = JSON.parse(Net::HTTP.get(URI("https://mempool.space/signet/api/tx/#{utxo['txid']}")))
+              utxo['scriptPubKey'] = tx_data['vout'][utxo['vout']]['scriptpubkey']
+            end
+          end
+
+          # Build and sign real transaction
+          tx = nil
+          VCR.use_cassette('signet_tx_build') do
+            tx = wallet.build_transaction(utxos, recipient_address, amount_to_send)
+          end
+
+          signed_tx = nil
+          VCR.use_cassette('signet_tx_sign') do
+            signed_tx = wallet.sign_transaction(tx)
+          end
+
+          # Verify signature validity against actual blockchain data
+          expect(signed_tx.inputs.first.script_sig.chunks.size).to eq(2)
+
+          spent_input = signed_tx.inputs.first
+          spent_utxo = utxos.find { |u|
+            u['txid'] == spent_input.out_point.txid &&
+            u['vout'] == spent_input.out_point.index
+          }
+          script_pubkey = Bitcoin::Script.parse_from_payload(spent_utxo['scriptPubKey'].htb)
+
+          verification_result = signed_tx.verify_input_sig(0, script_pubkey)
+          expect(verification_result).to be true
         end
 
-        expect { wallet.sign_transaction(tx_with_foreign_input) }
-          .to raise_error(SigningError)
+        it 'raises SigningError when attempting to sign non-wallet UTXOs' do
+          # Mock the UTXO lookup to avoid network calls
+          allow(wallet).to receive(:find_utxo_for_input).and_return({
+            'txid' => 'abc123',
+            'vout' => 0,
+            'scriptPubKey' => Bitcoin::Script.to_p2pkh(Bitcoin.hash160(Bitcoin::Key.generate.pubkey)).to_hex,
+            'value' => 100000
+          })
+
+          foreign_utxo = build_foreign_utxo(address: unfunded_key.legacy_address)
+          tx_with_foreign_input = nil
+          VCR.use_cassette('recommended_fee_rate') do
+            tx_with_foreign_input = wallet.build_transaction([foreign_utxo], recipient_address, amount_to_send)
+          end
+
+          expect { wallet.sign_transaction(tx_with_foreign_input) }
+            .to raise_error(SigningError)
+        end
       end
     end
   end

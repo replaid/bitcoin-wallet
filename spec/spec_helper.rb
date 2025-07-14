@@ -6,6 +6,13 @@ require_relative './support/utxo_helpers'
 # this file to always be loaded, without a need to explicitly require it in any
 # files.
 
+require 'vcr'
+
+VCR.configure do |config|
+  config.cassette_library_dir = 'spec/fixtures/vcr_cassettes'
+  config.hook_into :webmock
+end
+
 # See https://rubydoc.info/gems/rspec-core/RSpec/Core/Configuration
 RSpec.configure do |config|
   config.include UTXOHelpers
