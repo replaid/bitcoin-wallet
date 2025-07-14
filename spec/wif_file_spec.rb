@@ -107,7 +107,7 @@ describe WIFFile do
           sample_key
         end
         new_key = WIFFile.new.to_key
-        expect(new_key).to be_a(Bitcoin::Key)
+        expect(new_key).to be_a(SegWitKey)
       end
     end
   end

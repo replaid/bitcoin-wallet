@@ -29,6 +29,6 @@ class WIFFile
   end
 
   def to_key
-    Bitcoin::Key.from_wif(File.read(path))
+    SegWitKey.new(bitcoin_key: Bitcoin::Key.from_wif(File.read(path)), network: :signet)
   end
 end

@@ -8,6 +8,7 @@ require 'wif_file'
 require 'types'
 
 class InsufficientFundsError < RuntimeError; end
+class SigningError < RuntimeError; end
 
 class Wallet
   attr_reader :wif_file
@@ -26,9 +27,16 @@ class Wallet
     wif_file.to_key
   end
 
+  def address
+    load_key.address
+  end
+
+  def legacy_address
+    load_key.legacy_address
+  end
+
   def fetch_balance
-    address = load_key.to_addr
-    uri = URI("https://mempool.space/signet/api/address/#{address}")
+    uri = URI("https://mempool.space/signet/api/address/#{legacy_address}")
     satoshi_balance = JSON.parse(Net::HTTP.get(uri))["chain_stats"]["funded_txo_sum"]
     Money.new(satoshi_balance, 'BTC')
   end
@@ -53,7 +61,7 @@ class Wallet
       raise InsufficientFundsError, "Sending #{money_amount_to_send.format} with fee #{fee.format} exceeds available amount #{current_balance.format}"
     end
     tx.out << Bitcoin::TxOut.new(value: money_amount_to_send, script_pubkey: Bitcoin::Script.parse_from_addr(recipient_address))
-    tx.out << Bitcoin::TxOut.new(value: change_amount, script_pubkey: Bitcoin::Script.parse_from_addr(load_key.to_addr))
+    tx.out << Bitcoin::TxOut.new(value: change_amount, script_pubkey: Bitcoin::Script.parse_from_addr(legacy_address))
 
     tx
   end
