@@ -2,9 +2,12 @@ require 'bitcoin'
 Bitcoin.chain_params = :signet
 require 'money'
 Money.rounding_mode = BigDecimal::ROUND_HALF_UP
+Money.locale_backend = nil
 require 'net/http'
 require 'wif_file'
 require 'types'
+
+class InsufficientFundsError < RuntimeError; end
 
 class Wallet
   attr_reader :wif_file
@@ -44,9 +47,14 @@ class Wallet
 
     # add outputs
     fee = miner_fee(input_count: utxos.size, output_count: 2)
-    change_amount = utxos.sum { |utxo| Money.new(utxo['value'], 'BTC') } - money_amount_to_send - fee
+    current_balance = utxos.sum { |utxo| Money.new(utxo['value'], 'BTC') }
+    change_amount = current_balance - money_amount_to_send - fee
+    if change_amount < Money.new(0, 'BTC')
+      raise InsufficientFundsError, "Sending #{money_amount_to_send.format} with fee #{fee.format} exceeds available amount #{current_balance.format}"
+    end
     tx.out << Bitcoin::TxOut.new(value: money_amount_to_send, script_pubkey: Bitcoin::Script.parse_from_addr(recipient_address))
     tx.out << Bitcoin::TxOut.new(value: change_amount, script_pubkey: Bitcoin::Script.parse_from_addr(load_key.to_addr))
+
     tx
   end
 
