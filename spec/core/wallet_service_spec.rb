@@ -6,7 +6,7 @@ module Core
       include Dry::Monads[:result]
 
       let(:mempool_adapter) { instance_double(Infrastructure::MempoolSpaceAdapter) }
-      let(:key_store) { instance_double(Infrastructure::WifFileAdapter) }
+      let(:key_store) { instance_double(Infrastructure::WIFFileAdapter) }
       let(:service) { described_class.new(mempool: mempool_adapter, key_store: key_store) }
 
       describe '#get_balance' do
@@ -41,8 +41,11 @@ module Core
       end
 
       describe '#generate_address' do
+        let(:test_key) { Bitcoin::Key.generate }
+        let(:key_store) { Infrastructure::WIFFileAdapter.new }
+        let(:service) { described_class.new(mempool: mempool_adapter, key_store: key_store) }
+
         it 'returns a new key' do
-          test_key = Bitcoin::Key.generate
           allow(key_store).to receive(:generate).and_return(test_key)
           expect(service.generate_address).to eq(test_key)
         end

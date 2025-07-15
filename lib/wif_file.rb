@@ -1,5 +1,6 @@
 require 'fileutils'
-require 'segwit_key'
+
+require_relative 'segwit_key'
 
 class WIFFile
   attr_reader :directory, :filename

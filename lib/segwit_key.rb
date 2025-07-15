@@ -1,6 +1,6 @@
 require 'bitcoin'
 require 'dry/initializer'
-require 'types'
+require_relative 'types'
 
 class SegWitKey
   extend Dry::Initializer

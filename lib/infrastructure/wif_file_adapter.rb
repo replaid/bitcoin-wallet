@@ -1,18 +1,31 @@
 module Infrastructure
-  class WifFileAdapter
-    def initialize(path = 'wallet.key')
-      @path = path
+  class WIFFileAdapter
+    attr_reader :path
+
+    def initialize(path = nil)
+      @path = path || default_path
     end
 
-    def load
-      return nil unless File.exist?(@path)
-      Bitcoin::Key.from_wif(File.read(@path))
+    def path=(new_path)
+      raise ArgumentError, "Path cannot be nil" unless new_path
+      @path = new_path
     end
 
     def generate
       key = Bitcoin::Key.generate
-      File.write(@path, key.to_wif)
+      save_key(key)
       key
+    end
+
+    private
+
+    def save_key(key)
+      File.write(@path, key.to_wif)
+      File.chmod(0600, @path)
+    end
+
+    def default_path
+      File.join(Dir.pwd, 'wallet.key')
     end
   end
 end

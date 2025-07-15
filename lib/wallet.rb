@@ -1,11 +1,9 @@
 require 'bitcoin'
-Bitcoin.chain_params = :signet
 require 'money'
-Money.rounding_mode = BigDecimal::ROUND_HALF_UP
-Money.locale_backend = nil
 require 'net/http'
-require 'wif_file'
-require 'types'
+
+require_relative 'infrastructure/wif_file_adapter'
+require_relative 'core/services/wallet_service'
 
 class InsufficientFundsError < RuntimeError; end
 class SigningError < RuntimeError; end
@@ -13,7 +11,7 @@ class SigningError < RuntimeError; end
 class Wallet
   attr_reader :wif_file
 
-  def initialize(wif_file: WIFFile.new)
+  def initialize(wif_file:)
     @wif_file = wif_file
   end
 

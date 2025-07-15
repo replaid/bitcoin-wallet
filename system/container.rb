@@ -1,33 +1,31 @@
 require 'dry/system'
 require 'dry/container'
 require 'dry/auto_inject'
+
+require 'dry/monads'
 require 'dry/types'
 
+require_relative '../lib/types'
+
+require_relative '../lib/core/services/wallet_service'
+require_relative '../lib/infrastructure/wif_file_adapter'
+require_relative '../lib/infrastructure/mempool_space_adapter'
+require_relative '../lib/segwit_key'
+require_relative '../lib/wallet'
+require_relative '../lib/wif_file'
+
 module Infrastructure
-  # Define adapter interfaces
-  class MempoolSpaceAdapter; end
-  class WifFileAdapter; end
+  # Define adapters here if needed
 end
 
-class Container
+class Container < Dry::System::Container
   extend Dry::Container::Mixin
 
-  register('bitcoin') do
-    require 'bitcoin'
-    Bitcoin.chain_params = :signet
-    Bitcoin
-  end
-
-  register('money') do
-    require 'money'
-    Money.rounding_mode = BigDecimal::ROUND_HALF_UP
-    Money.locale_backend = nil
-    Money
-  end
-
   register('mempool.adapter') { Infrastructure::MempoolSpaceAdapter.new }
-  register('key_store') { Infrastructure::WifFileAdapter.new }
+  register('key_store') { Infrastructure::WIFFileAdapter.new }
+
+  register('wif_file') { WIFFile.new }
+  register('wallet') { Wallet.new(wif_file: resolve('wif_file')) }
 end
 
-# Set up auto-injection
 Import = Dry::AutoInject(Container)

@@ -1,9 +1,6 @@
 require 'wallet'
-require 'bitcoin'
 
 include Bitcoin::Opcodes
-
-Bitcoin.chain_params = :signet
 
 describe Wallet do
   let(:old_sample_wif) { 'cVctnY8ai1XxfKahKoBU8oUSNHCSDAmWcSwMDHYEWWrH7Ft6yXt6' }

@@ -1,4 +1,6 @@
 require 'dry/types'
+
+require 'bitcoin'
 require 'money'
 
 module Types

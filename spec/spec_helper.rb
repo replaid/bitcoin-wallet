@@ -14,8 +14,7 @@ RSpec.configure do |config|
 
   config.before(:suite) do
     # Initialize all container dependencies
-    Container.resolve('bitcoin')
-    Container.resolve('money')
+    Container.finalize!
   end
 end
 
