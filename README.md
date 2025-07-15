@@ -1,6 +1,6 @@
 # Bitcoin Signet Wallet
 
-See this project on GitHub: https://github.com/replaid/bitcoin-wallet
+[![GitHub](https://img.shields.io/badge/GitHub-View%20on%20GitHub-blue)](https://github.com/replaid/bitcoin-wallet)
 
 ## CLI Usage
 
@@ -22,9 +22,7 @@ docker compose run wallet help
 docker compose build
 ```
 
-2. Run commands (see above)
-
-3. Persist wallet data:
+2. Persist wallet data:
 ```bash
 mkdir data
 docker compose run -v ./data:/app/data wallet balance
