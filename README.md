@@ -84,11 +84,3 @@ Install dependencies:
 docker compose run --entrypoint "bundle" wallet
 ```
 
-## Additional Notes
-
-* **Dockerfile and docker-compose.yml**: The versions from the previous response (with `BUNDLE_PATH=/app/.bundle` and `bundle-data` volume) are assumed to be in place. If not, ensure they’re updated as provided.  
-* **broadcast\_transaction Specs**: The specs from the earlier response (with VCR for the success case and WebMock for error cases) should work fine, as the orphan container issue is unrelated to the Ruby code.  
-* **Docker Desktop (macOS)**: Since enabling `docker.sock` access fixed the earlier issue, ensure Docker Desktop remains running and configured correctly.  
-* **Gemfile**: Ensure test dependencies (`rspec`, `webmock`, `vcr`) are in your `Gemfile`, as they’re required for the `broadcast_transaction` specs.
-
-If you see any further issues (e.g., test failures, persistent orphans), share the output, and I’ll help debug. Let me know if you need additional tweaks to the `README.md` or other parts of the setup\!
