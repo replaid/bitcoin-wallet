@@ -1,7 +1,13 @@
-version: '3'
 services:
   wallet:
     build: .
     volumes:
       - .:/app
+      - wallet-data:/app/data
     tty: true
+    environment:
+      - NETWORK=signet
+      - DATA_DIR=/app/data
+
+volumes:
+  wallet-data:
