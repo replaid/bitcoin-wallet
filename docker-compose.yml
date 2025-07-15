@@ -4,10 +4,23 @@ services:
     volumes:
       - .:/app
       - wallet-data:/app/data
+      - bundle-data:/app/.bundle
     tty: true
     environment:
       - NETWORK=signet
       - DATA_DIR=/app/data
 
+  test:
+    build: .
+    volumes:
+      - .:/app
+      - wallet-data:/app/data
+      - bundle-data:/app/.bundle
+    environment:
+      - NETWORK=signet
+      - DATA_DIR=/app/data
+    command: bundle exec rspec
+
 volumes:
   wallet-data:
+  bundle-data:

@@ -1,3 +1,4 @@
+# Dockerfile
 FROM ruby:3.2
 WORKDIR /app
 
@@ -6,11 +7,16 @@ RUN apt-get update -qq && \
     apt-get install -y build-essential curl && \
     rm -rf /var/lib/apt/lists/*
 
+# Set up custom gem path
+ENV BUNDLE_PATH=/app/.bundle
+ENV BUNDLE_HOME=/app/.bundle
+RUN bundle config set path '/app/.bundle'
+
 # Set up project
 COPY Gemfile* .
 RUN bundle install && \
-    mkdir -p /app/data && \
-    chmod 0700 /app/data
+    mkdir -p /app/data /app/.bundle && \
+    chmod 0700 /app/data /app/.bundle
 
 # Copy all files
 COPY . .
@@ -18,4 +24,5 @@ COPY . .
 # Ensure the script is executable
 RUN chmod +x bin/wallet_cli.rb
 
-ENTRYPOINT ["ruby", "bin/wallet_cli.rb"]
+# Use CMD for flexibility (allows overriding for tests)
+CMD ["ruby", "bin/wallet_cli.rb"]
