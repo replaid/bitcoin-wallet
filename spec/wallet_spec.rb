@@ -258,14 +258,17 @@ describe Wallet do
 
     context 'when broadcast is successful' do
       it 'returns the transaction ID' do
-        stub_request(:post, "https://mempool.space/signet/api/tx")
-          .to_return(
-            status: 200,
-            body: { txid: sample_tx.txid }.to_json,
-            headers: { 'Content-Type' => 'application/json' }
-          )
+        VCR.use_cassette('signet_broadcast_success') do
+          stub_request(:post, "https://mempool.space/signet/api/tx")
+            .with(body: sample_tx.to_hex)
+            .to_return(
+              status: 200,
+              body: sample_tx.txid,
+              headers: { 'Content-Type' => 'text/plain' }
+            )
 
-        expect(wallet.broadcast_transaction(sample_tx)).to eq(sample_tx.txid)
+          expect(wallet.broadcast_transaction(sample_tx)).to eq(sample_tx.txid)
+        end
       end
     end
 
@@ -274,7 +277,8 @@ describe Wallet do
         stub_request(:post, "https://mempool.space/signet/api/tx")
           .to_return(
             status: 400,
-            body: { message: "Transaction rejected: mandatory-script-verify-flag-failed" }.to_json
+            body: { message: "Transaction rejected: mandatory-script-verify-flag-failed" }.to_json,
+            headers: { 'Content-Type' => 'application/json' }
           )
 
         expect { wallet.broadcast_transaction(sample_tx) }
@@ -285,7 +289,8 @@ describe Wallet do
         stub_request(:post, "https://mempool.space/signet/api/tx")
           .to_return(
             status: 403,
-            body: { message: "Transaction already in blockchain" }.to_json
+            body: { message: "Transaction already in blockchain" }.to_json,
+            headers: { 'Content-Type' => 'application/json' }
           )
 
         expect { wallet.broadcast_transaction(sample_tx) }
@@ -296,7 +301,8 @@ describe Wallet do
         stub_request(:post, "https://mempool.space/signet/api/tx")
           .to_return(
             status: 429,
-            body: { message: "Too many requests" }.to_json
+            body: { message: "Too many requests" }.to_json,
+            headers: { 'Content-Type' => 'application/json' }
           )
 
         expect { wallet.broadcast_transaction(sample_tx) }

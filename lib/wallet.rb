@@ -155,7 +155,7 @@ class Wallet
 
     case response
     when Net::HTTPSuccess
-      JSON.parse(response.body)["txid"]
+      response.body.strip
     else
       handle_broadcast_error(response)
     end
