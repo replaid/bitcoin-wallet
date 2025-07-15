@@ -42,6 +42,16 @@ class Wallet
   def build_transaction(utxos, recipient_address, amount_to_send)
     money_amount_to_send = Types::BTCMoney[amount_to_send]
 
+    # Detect whether we should use SegWit rates
+    segwit = recipient_address.start_with?('tb1') ||
+      utxos.any? { |u| u['scriptPubKey'].to_s.start_with?('0014') }
+
+    fee = relay_fee(
+      input_count: utxos.size,
+      output_count: 2, # recipient + change
+      segwit: segwit
+    )
+
     tx = Bitcoin::Tx.new
 
     # add inputs
@@ -52,7 +62,6 @@ class Wallet
     end
 
     # add outputs
-    fee = miner_fee(input_count: utxos.size, output_count: 2)
     current_balance = utxos.sum { |utxo| Money.new(utxo['value'], 'BTC') }
     change_amount = current_balance - money_amount_to_send - fee
     if change_amount < Money.new(0, 'BTC')
@@ -97,9 +106,36 @@ class Wallet
     JSON.parse(Net::HTTP.get(uri))
   end
 
-  def estimate_tx_vbytes(input_count:, output_count:)
-    base_tx_size = 10
-    base_tx_size + (input_count * 68) + (output_count * 31)
+  def estimate_tx_vbytes(input_count:, output_count:, segwit: false)
+    base_size = 10
+
+    if segwit
+      # SegWit calculation using precise integer math
+      # - 1 vbyte per input for txin
+      # - 1 vbyte per output
+      # - Witness data gets 1/4 discount
+      # Precise integer math for SegWit
+      witness_units = input_count * 109  # 108 witness bytes + 1 count byte per input
+      witness_vbytes = ((witness_units.to_f + 3) / 4).ceil
+      base_size +
+        (input_count * 68) +  # Input size
+        (output_count * 31) + # Output size
+        witness_vbytes        # Witness discount
+    else
+      # Legacy calculation
+      base_size + (input_count * 148) + (output_count * 34)
+    end
+  end
+
+  def relay_fee(input_count:, output_count:, segwit: false)
+    rate = fetch_recommended_fee_rate
+    vbytes = estimate_tx_vbytes(
+      input_count: input_count,
+      output_count: output_count,
+      segwit: segwit
+    )
+    # Use integer multiplication to avoid floating-point issues
+    Money.new(rate.fractional.to_i * vbytes, "BTC")
   end
 
   def fetch_recommended_fee_rate
@@ -107,10 +143,6 @@ class Wallet
     raw_response = Net::HTTP.get(uri)
     response_data = JSON.parse(raw_response)
     Money.new(response_data["hourFee"], "BTC")
-  end
-
-  def miner_fee(input_count:, output_count:)
-    fetch_recommended_fee_rate * estimate_tx_vbytes(input_count:, output_count:)
   end
 
   def broadcast_transaction(signed_tx)

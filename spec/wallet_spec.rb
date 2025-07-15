@@ -88,7 +88,7 @@ describe Wallet do
       it "calculates change correctly" do
         expected_fee = nil
         VCR.use_cassette('recommended_fee_rate') do
-          expected_fee = wallet.miner_fee(input_count: utxos.size, output_count: 2)
+          expected_fee = wallet.relay_fee(input_count: utxos.size, output_count: 2)
         end
         VCR.use_cassette('recommended_fee_rate') do
           tx = wallet.build_transaction(utxos, recipient_address, amount_to_send)
@@ -206,8 +206,12 @@ describe Wallet do
   end
 
   describe '#estimate_tx_vbytes' do
-    it 'assumes 68 vbytes for SegWit inputs, 31 for outputs' do
-      expect(wallet.estimate_tx_vbytes(input_count: 1, output_count: 2)).to eq(140)
+    it 'calculates legacy vbytes by default' do
+      expect(wallet.estimate_tx_vbytes(input_count: 1, output_count: 1)).to eq(192) # 10 + 148 + 34
+    end
+
+    it 'calculates SegWit vbytes when requested' do
+      expect(wallet.estimate_tx_vbytes(input_count: 1, output_count: 1, segwit: true)).to eq(137)
     end
   end
 
@@ -219,10 +223,16 @@ describe Wallet do
     end
   end
 
-  describe '#miner_fee' do
-    it 'calculates correctly' do
+  describe '#relay_fee' do
+    it 'calculates correctly for SegWit' do
       VCR.use_cassette('recommended_fee_rate') do
-        expect(wallet.miner_fee(input_count: 4, output_count: 2)).to eq(Money.new(344, 'BTC'))
+        expect(wallet.relay_fee(input_count: 4, output_count: 2, segwit: true)).to eq(Money.new(454, 'BTC'))
+      end
+    end
+
+    it 'uses legacy calculation by default' do
+      VCR.use_cassette('recommended_fee_rate') do
+        expect(wallet.relay_fee(input_count: 1, output_count: 1)).to eq(Money.new(192, 'BTC'))
       end
     end
   end
