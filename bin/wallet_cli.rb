@@ -25,6 +25,10 @@ wallet = Container['wallet']
 def display_help
   puts <<~HELP
     Bitcoin Signet Wallet CLI
+
+    Address:
+      #{Container['wallet'].legacy_address}
+
     Commands:
       balance       - Show current balance
       send <amount> <address> - Send funds to address
