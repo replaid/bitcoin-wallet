@@ -1,6 +1,7 @@
 services:
   wallet:
     build: .
+    container_name: bitcoin-wallet
     volumes:
       - .:/app
       - wallet-data:/app/data
@@ -12,6 +13,7 @@ services:
 
   test:
     build: .
+    container_name: bitcoin-wallet-test
     volumes:
       - .:/app
       - wallet-data:/app/data
@@ -19,7 +21,8 @@ services:
     environment:
       - NETWORK=signet
       - DATA_DIR=/app/data
-    command: bundle exec rspec
+    entrypoint: ["/bin/bash", "-c"]
+    command: ["bundle exec rspec"]
 
 volumes:
   wallet-data:

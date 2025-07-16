@@ -39,42 +39,84 @@ A command-line Bitcoin wallet for the Signet network, built with Ruby and the `b
 
 ## CLI Usage
 
-### Check balance
-```
-docker compose run --rm wallet ruby bin/wallet_cli.rb balance
-```
-    
-Displays the current balance and wallet address.
-
-
-### Send funds
-
-```
-docker compose run --rm wallet ruby bin/wallet_cli.rb send 0.01 tb1q...address
-```
-
-Sends the specified amount (in BTC) to the given Signet address.
+Use the `wallet-docker.sh` script for all commands. The equivalent `docker compose` commands are provided for reference. The wrapper script automatically removes containers after execution, preventing orphan container warnings. If there are orphan containers, they can be removed with `docker compose up --remove-orphans`.
 
 ### Help
 
-```
-docker compose run --rm wallet ruby bin/wallet_cli.rb help
-```
-
 Displays available commands and the wallet address.
 
-
-## Development
-
-Run tests:
+**Wrapper command:**
 
 ```bash
-docker compose run test
+./wallet-docker.sh help
 ```
 
-Install dependencies:
+**Docker command:**
 
 ```bash
-docker compose run --entrypoint "bundle" wallet
+docker compose run --rm wallet help
 ```
 
+### Install dependencies
+
+Install Ruby gems using Bundler.
+
+**Wrapper command:**
+
+```bash
+./wallet-docker.sh bundle
+```
+
+**Docker command:**
+
+```bash
+docker compose run --rm --entrypoint "bundle" wallet
+```
+
+### Run tests
+
+Run the RSpec test suite.
+
+**Wrapper command:**
+
+```bash
+./wallet-docker.sh test
+```
+
+**Docker command:**
+
+```bash
+docker compose run --rm test
+```
+
+### Check balance
+
+Displays the current balance and wallet address.
+
+**Wrapper command:**
+
+```bash
+./wallet-docker.sh balance
+```
+
+**Docker command:**
+
+```bash
+docker compose run --rm wallet balance
+```
+
+### Send funds
+
+Sends the specified amount (in BTC) to the given Signet address.
+
+**Wrapper command:**
+
+```bash
+./wallet-docker.sh send 0.01 tb1q...address
+```
+
+**Docker command:**
+
+```bash
+docker compose run --rm wallet send 0.01 tb1q...address
+```

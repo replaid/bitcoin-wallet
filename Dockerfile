@@ -24,5 +24,8 @@ COPY . .
 # Ensure the script is executable
 RUN chmod +x bin/wallet_cli.rb
 
-# Use CMD for flexibility (allows overriding for tests)
-CMD ["ruby", "bin/wallet_cli.rb"]
+# Set entrypoint to wallet script
+ENTRYPOINT ["ruby", "bin/wallet_cli.rb"]
+
+# Default command
+CMD ["help"]
