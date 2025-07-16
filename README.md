@@ -41,7 +41,7 @@ A command-line Bitcoin wallet for the Signet network, built with Ruby and the `b
 
 ### Check balance
 ```
-docker compose run --rm wallet balance
+docker compose run --rm wallet ruby bin/wallet_cli.rb balance
 ```
     
 Displays the current balance and wallet address.
@@ -50,7 +50,7 @@ Displays the current balance and wallet address.
 ### Send funds
 
 ```
-docker compose run --rm wallet send 0.01 tb1q...address
+docker compose run --rm wallet ruby bin/wallet_cli.rb send 0.01 tb1q...address
 ```
 
 Sends the specified amount (in BTC) to the given Signet address.
@@ -58,7 +58,7 @@ Sends the specified amount (in BTC) to the given Signet address.
 ### Help
 
 ```
-docker compose run --rm wallet help
+docker compose run --rm wallet ruby bin/wallet_cli.rb help
 ```
 
 Displays available commands and the wallet address.
@@ -69,13 +69,7 @@ Displays available commands and the wallet address.
 Run tests:
 
 ```bash
-docker compose run wallet rspec
-```
-
-or this way:
-
-```bash
-docker compose run --entrypoint "bundle exec rspec" wallet
+docker compose run test
 ```
 
 Install dependencies:
